@@ -2,4 +2,14 @@
 job-search-backup-*.json
 data/
 
+# Personal documents — the repo is public; never commit these
+*.pdf
+*.docx
+*.doc
+resume*
+Resume*
+
+# Hill seed data: personal job-search strategy and pitch narratives
+js/hill-seed.js
+
 .DS_Store

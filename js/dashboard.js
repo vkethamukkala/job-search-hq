@@ -4,6 +4,15 @@
 const Dashboard = {
   OUTREACH_TYPES: ['outreach', 'coffee-chat', 'call', 'email', 'referral', 'meeting', 'other'],
 
+  hillLineHtml() {
+    const n = Store.state.hillTargets.filter(t => t.status === 'ready').length;
+    if (!n) return '';
+    return `<div class="card section-gap hill-line">
+      <span class="grow">🏛️ <b>${n}</b> Hill narrative${n === 1 ? '' : 's'} ready to send to the liaison.</span>
+      <button class="tiny" id="ov-open-hill">Open Hill tab</button>
+    </div>`;
+  },
+
   adviceCardHtml() {
     const items = Store.state.meetings
       .filter(m => m.debrief && m.debrief.advice && !m.debrief.adviceDone)
@@ -131,6 +140,7 @@ const Dashboard = {
         </div>
       </div>
 
+      ${this.hillLineHtml()}
       ${this.adviceCardHtml()}
 
       <div class="card section-gap">
@@ -208,6 +218,8 @@ const Dashboard = {
         ? 'Nice. Tell ' + contactName(contact) + ' you did it — follow-up due today.'
         : 'Nice — advice checked off.');
     }));
+    const openHill = el.querySelector('#ov-open-hill');
+    if (openHill) openHill.addEventListener('click', () => App.setTab('hill'));
     el.querySelectorAll('[data-open-meeting]').forEach(b => b.addEventListener('click', () => {
       const m = Store.state.meetings.find(x => x.id === b.dataset.openMeeting);
       Meetings.ui.selectedId = m.id;

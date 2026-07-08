@@ -21,7 +21,8 @@ const Store = {
       meetings: [],
       stories: [],
       tasks: [],
-      notes: []
+      notes: [],
+      hillTargets: []
     };
   },
 
@@ -39,6 +40,7 @@ const Store = {
     this.state.stories = this.state.stories || [];
     this.state.tasks = this.state.tasks || [];
     this.state.notes = this.state.notes || [];
+    this.state.hillTargets = this.state.hillTargets || [];
     return this.state;
   },
 

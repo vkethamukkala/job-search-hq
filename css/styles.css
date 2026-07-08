@@ -525,3 +525,72 @@ footer.app-foot {
   font-size: 12px;
   color: var(--ink-muted);
 }
+
+/* ---------- Hill tab ---------- */
+
+.hill-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.hill-card:hover { border-color: rgba(255, 255, 255, 0.25); }
+
+.hill-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+.hill-name { color: var(--ink); font-weight: 600; }
+
+.party-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.party-chip.party-D { background: var(--accent-track); border-color: rgba(57, 135, 229, 0.45); color: var(--ink); }
+.party-chip.party-R { background: var(--critical-soft); border-color: rgba(208, 59, 59, 0.40); color: var(--ink); }
+
+.prospective-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(250, 178, 25, 0.14);
+  border: 1px solid rgba(250, 178, 25, 0.45);
+  color: var(--warning);
+}
+
+.verify-mark { font-size: 11px; color: var(--warning); }
+
+.status-badge {
+  font-size: 11px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.status-badge.st-ready { background: var(--accent-track); border-color: rgba(57, 135, 229, 0.45); color: var(--ink); }
+.status-badge.st-sent-to-liaison,
+.status-badge.st-intro-made { background: rgba(250, 178, 25, 0.14); border-color: rgba(250, 178, 25, 0.4); color: var(--ink); }
+.status-badge.st-meeting-set { background: var(--good-soft); border-color: rgba(12, 163, 12, 0.4); color: var(--ink); }
+.status-badge.st-parked { opacity: 0.6; }
+
+.prio { font-size: 11px; color: var(--ink-muted); }
+.prio-high { color: var(--warning); font-weight: 600; }
+
+.hill-tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hill-tags .chip { background: var(--surface-2); font-size: 11px; padding: 2px 9px; color: var(--ink-2); }
+.hook-tag { border-color: rgba(57, 135, 229, 0.45); color: var(--ink-2); }
+
+.hill-line { display: flex; align-items: center; gap: 10px; }

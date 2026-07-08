@@ -5,6 +5,7 @@ const App = {
 
   init() {
     Store.load();
+    Hill.ensureSeed();
     document.querySelectorAll('#tab-nav .tab').forEach(btn =>
       btn.addEventListener('click', () => this.setTab(btn.dataset.tab)));
     document.getElementById('quick-note-btn').addEventListener('click', () => Notes.quickCapture());
@@ -25,6 +26,7 @@ const App = {
     else if (this.tab === 'calendar') Meetings.render();
     else if (this.tab === 'contacts') Contacts.render();
     else if (this.tab === 'pipeline') Pipeline.render();
+    else if (this.tab === 'hill') Hill.render();
     else if (this.tab === 'stories') Stories.render();
     else if (this.tab === 'resume') Resume.render();
     else if (this.tab === 'notes') Notes.render();
