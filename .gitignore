@@ -1,0 +1,5 @@
+# Backups hold your real contacts and notes (PII) — they must never leave this machine via git
+job-search-backup-*.json
+data/
+
+.DS_Store
