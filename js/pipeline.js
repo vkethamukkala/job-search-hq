@@ -3,12 +3,14 @@
 const Pipeline = {
   STATUSES: ['saved', 'applied', 'interviewing', 'offer', 'rejected'],
   LABELS: { saved: 'Saved', applied: 'Applied', interviewing: 'Interviewing', offer: 'Offer', rejected: 'Rejected' },
-  ui: { showAdd: false, selectedId: null },
+  TRACKS: { hill: 'Hill', thinktank: 'Think tank', fellowship: 'Fellowship', other: 'Other' },
+  ui: { showAdd: false, selectedId: null, track: '' },
 
   addApplication(fields) {
     const a = Object.assign({
       id: Store.uid(),
       company: '', role: '', url: '', status: 'saved',
+      track: 'hill', deadline: null,
       appliedDate: null, followUpDate: null, contactId: '',
       notes: '', history: [{ status: fields.status || 'saved', date: todayISO() }]
     }, fields);
@@ -51,6 +53,10 @@ const Pipeline = {
     el.innerHTML = `
       <div class="toolbar">
         <span class="muted small">${apps.length} application${apps.length === 1 ? '' : 's'} tracked</span>
+        <select id="pl-track">
+          <option value="">All tracks</option>
+          ${Object.keys(this.TRACKS).map(k => `<option value="${k}" ${this.ui.track === k ? 'selected' : ''}>${this.TRACKS[k]}</option>`).join('')}
+        </select>
         <span class="spacer"></span>
         <button class="primary" id="pl-add-btn">+ Add application</button>
       </div>
@@ -67,6 +73,9 @@ const Pipeline = {
             </select></div>
           <div><label>Status</label>
             <select id="pa-status">${this.STATUSES.map(s => `<option value="${s}">${this.LABELS[s]}</option>`).join('')}</select></div>
+          <div><label>Track</label>
+            <select id="pa-track">${Object.keys(this.TRACKS).map(k => `<option value="${k}">${this.TRACKS[k]}</option>`).join('')}</select></div>
+          <div><label>Deadline</label><input type="date" id="pa-deadline"></div>
           <div><button class="primary" id="pa-save">Save</button></div>
         </div>
       </div>
@@ -83,17 +92,21 @@ const Pipeline = {
 
   columnHtml(status) {
     const cards = Store.state.applications
-      .filter(a => a.status === status)
+      .filter(a => a.status === status && (!this.ui.track || (a.track || 'other') === this.ui.track))
       .sort((a, b) => (this.stageDate(b) || '').localeCompare(this.stageDate(a) || ''));
     const idx = this.STATUSES.indexOf(status);
+    const t = todayISO();
     return `<div class="kanban-col">
       <h3>${this.LABELS[status]} <span class="count">${cards.length}</span></h3>
       ${cards.map(a => {
         const contact = Store.state.contacts.find(c => c.id === a.contactId);
         const days = this.stageDate(a) ? daysBetween(this.stageDate(a), todayISO()) : 0;
+        const dlClass = a.deadline < t ? 'overdue' : (daysBetween(t, a.deadline) <= 7 ? 'due-today' : 'muted');
         return `<div class="kcard status-${status}" data-id="${a.id}">
           <div class="co">${escapeHtml(a.company)}</div>
           <div class="role">${escapeHtml(a.role)}</div>
+          ${a.track && a.track !== 'other' ? `<span class="track-chip">${this.TRACKS[a.track] || a.track}</span>` : ''}
+          ${a.deadline && !['applied', 'offer', 'rejected'].includes(a.status) ? `<div class="small ${dlClass}">⏰ deadline ${fmtDate(a.deadline)}</div>` : ''}
           ${contact ? `<div class="small muted">via ${escapeHtml(contactName(contact))}</div>` : ''}
           <div class="meta">
             <span>${days === 0 ? 'today' : days + 'd in stage'}</span>
@@ -130,6 +143,9 @@ const Pipeline = {
               <option value="">None</option>
               ${Store.state.contacts.map(c => `<option value="${c.id}" ${a.contactId === c.id ? 'selected' : ''}>${escapeHtml(contactName(c))}</option>`).join('')}
             </select></div>
+          <div class="field"><label>Track</label>
+            <select data-af="track">${Object.keys(this.TRACKS).map(k => `<option value="${k}" ${(a.track || 'other') === k ? 'selected' : ''}>${this.TRACKS[k]}</option>`).join('')}</select></div>
+          <div class="field"><label>Deadline</label><input type="date" data-af="deadline" value="${a.deadline || ''}"></div>
           <div class="field"><label>Applied date</label><input type="date" data-af="appliedDate" value="${a.appliedDate || ''}"></div>
           <div class="field"><label>Follow-up date</label><input type="date" data-af="followUpDate" value="${a.followUpDate || ''}"></div>
         </div>
@@ -144,6 +160,7 @@ const Pipeline = {
 
   bind(el) {
     el.querySelector('#pl-add-btn').addEventListener('click', () => { this.ui.showAdd = !this.ui.showAdd; App.render(); });
+    el.querySelector('#pl-track').addEventListener('change', e => { this.ui.track = e.target.value; App.render(); });
 
     const save = el.querySelector('#pa-save');
     if (save) save.addEventListener('click', () => {
@@ -152,7 +169,9 @@ const Pipeline = {
       this.addApplication({
         company: v('pa-company'), role: v('pa-role'), url: v('pa-url'),
         contactId: el.querySelector('#pa-contact').value,
-        status: el.querySelector('#pa-status').value
+        status: el.querySelector('#pa-status').value,
+        track: el.querySelector('#pa-track').value,
+        deadline: el.querySelector('#pa-deadline').value || null
       });
       this.ui.showAdd = false;
       Store.save(); App.render();

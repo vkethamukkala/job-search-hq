@@ -2,7 +2,7 @@
    pipeline tiles, recent activity. */
 
 const Dashboard = {
-  OUTREACH_TYPES: ['outreach', 'coffee-chat', 'call', 'email', 'referral', 'meeting', 'other'],
+  OUTREACH_TYPES: ['outreach', 'coffee-chat', 'call', 'email', 'referral', 'meeting', 'informational', 'other'],
 
   hillLineHtml() {
     const n = Store.state.hillTargets.filter(t => t.status === 'ready').length;
@@ -44,7 +44,12 @@ const Dashboard = {
     const inWeek = d => d && d >= weekStart && d <= weekEnd;
     const apps = Store.state.applications.filter(a => inWeek(a.appliedDate)).length;
     const outreach = Store.state.activities.filter(a => a.contactId && this.OUTREACH_TYPES.includes(a.type) && inWeek(a.date)).length;
-    return { apps, outreach };
+    const infos = Store.state.activities.filter(a => a.contactId && a.type === 'informational' && inWeek(a.date)).length;
+    return { apps, outreach, infos };
+  },
+
+  goalsMet(c, g) {
+    return c.apps >= g.applications && c.outreach >= g.outreach && c.infos >= (g.informationals || 0);
   },
 
   streak() {
@@ -52,16 +57,27 @@ const Dashboard = {
     const thisWeek = weekStartISO(todayISO());
     let streak = 0;
     // Current week counts toward the streak only once it's already hit.
-    const cur = this.weekCounts(thisWeek);
-    if (cur.apps >= g.applications && cur.outreach >= g.outreach) streak++;
+    if (this.goalsMet(this.weekCounts(thisWeek), g)) streak++;
     let w = addDaysISO(thisWeek, -7);
     const firstWeek = weekStartISO(Store.state.settings.startDate);
     while (w >= firstWeek) {
-      const c = this.weekCounts(w);
-      if (c.apps >= g.applications && c.outreach >= g.outreach) { streak++; w = addDaysISO(w, -7); }
+      if (this.goalsMet(this.weekCounts(w), g)) { streak++; w = addDaysISO(w, -7); }
       else break;
     }
     return streak;
+  },
+
+  /* Outreach → informational → meeting → referral over the trailing 4 weeks —
+     the conversion signal that says whether the strategy is working. */
+  funnel() {
+    const from = addDaysISO(todayISO(), -28);
+    const acts = Store.state.activities.filter(a => a.date && a.date >= from);
+    return {
+      touches: acts.filter(a => a.contactId && this.OUTREACH_TYPES.includes(a.type)).length,
+      infos: acts.filter(a => a.type === 'informational').length,
+      meetings: Store.state.meetings.filter(m => m.done && m.date && m.date >= from).length,
+      referrals: acts.filter(a => a.type === 'referral').length
+    };
   },
 
   followUps() {
@@ -75,16 +91,66 @@ const Dashboard = {
     const tasks = Store.state.tasks
       .filter(x => !x.done && x.dueDate && x.dueDate <= t)
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-    return { contacts, apps, tasks };
+    const horizon = addDaysISO(t, 7);
+    const deadlines = Store.state.applications
+      .filter(a => a.deadline && a.deadline <= horizon && !['applied', 'offer', 'rejected'].includes(a.status))
+      .sort((a, b) => a.deadline.localeCompare(b.deadline));
+    return { contacts, apps, tasks, deadlines };
+  },
+
+  /* Countdown card: a segmented phase timeline when phases are defined,
+     else the original single start→end bar. */
+  countdownCardHtml(s, t) {
+    const phases = (s.phases || []).filter(p => p.start && p.end);
+    if (!phases.length) {
+      const totalDays = Math.max(1, daysBetween(s.startDate, s.endDate));
+      const dayNum = Math.min(totalDays, Math.max(1, daysBetween(s.startDate, t) + 1));
+      const daysLeft = Math.max(0, daysBetween(t, s.endDate));
+      return `<div class="card section-gap">
+        <div class="hero">
+          <span class="big">${daysLeft}</span>
+          <span class="caption">days left · day ${dayNum} of ${totalDays} · ends ${fmtDate(s.endDate)}</span>
+        </div>
+        <div class="meter thin" style="margin-top:12px"><span style="width:${Math.round((dayNum / totalDays) * 100)}%"></span></div>
+      </div>`;
+    }
+    const cp = currentPhase();
+    const last = phases[phases.length - 1];
+    const totalSpan = Math.max(1, daysBetween(phases[0].start, last.end));
+    let hero;
+    if (cp) {
+      const left = Math.max(0, daysBetween(t, cp.phase.end));
+      hero = `<span class="big">${left}</span>
+        <span class="caption">days left in <b style="color:var(--ink)">${escapeHtml(cp.phase.name)}</b> · phase ${cp.idx + 1} of ${cp.total} · plan runs through ${fmtDate(last.end)}</span>`;
+    } else if (t < phases[0].start) {
+      hero = `<span class="big">${daysBetween(t, phases[0].start)}</span>
+        <span class="caption">days until the plan starts (${escapeHtml(phases[0].name)}, ${fmtDate(phases[0].start)})</span>`;
+    } else {
+      hero = `<span class="big">0</span><span class="caption">plan complete — last phase ended ${fmtDate(last.end)}</span>`;
+    }
+    return `<div class="card section-gap">
+      <div class="hero">${hero}</div>
+      <div class="phase-strip">
+        ${phases.map(p => {
+          const span = Math.max(1, daysBetween(p.start, p.end) + 1);
+          const w = Math.max(8, Math.round((span / totalSpan) * 100));
+          const state = t > p.end ? 'past' : (t >= p.start ? 'current' : 'future');
+          const fill = state === 'past' ? 100 : state === 'future' ? 0
+            : Math.round(((daysBetween(p.start, t) + 1) / span) * 100);
+          return `<div class="phase-seg ${state}" style="flex:${w}" title="${escapeHtml(p.name)} · ${fmtDate(p.start)} – ${fmtDate(p.end)}">
+            <div class="phase-name">${escapeHtml(p.name)}</div>
+            <div class="phase-bar"><span style="width:${fill}%"></span></div>
+            <div class="phase-dates">${fmtDate(p.start)} – ${fmtDate(p.end)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
   },
 
   render() {
     const el = document.getElementById('tab-overview');
     const s = Store.state.settings;
     const t = todayISO();
-    const totalDays = Math.max(1, daysBetween(s.startDate, s.endDate));
-    const dayNum = Math.min(totalDays, Math.max(1, daysBetween(s.startDate, t) + 1));
-    const daysLeft = Math.max(0, daysBetween(t, s.endDate));
     const g = s.weeklyGoals;
     const week = this.weekCounts(weekStartISO(t));
     const streak = this.streak();
@@ -94,29 +160,33 @@ const Dashboard = {
     const feed = Store.state.activities.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 8);
 
     const pct = (n, goal) => Math.min(100, Math.round((n / Math.max(1, goal)) * 100));
+    const fn = this.funnel();
 
     el.innerHTML = `
-      <div class="card section-gap">
-        <div class="hero">
-          <span class="big">${daysLeft}</span>
-          <span class="caption">days left · day ${dayNum} of ${totalDays} · ends ${fmtDate(s.endDate)}</span>
-        </div>
-        <div class="meter thin" style="margin-top:12px"><span style="width:${Math.round((dayNum / totalDays) * 100)}%"></span></div>
-      </div>
+      ${this.countdownCardHtml(s, t)}
 
       <div class="grid grid-2 section-gap">
         <div class="card">
           <h2>This week</h2>
-          <div class="goal-line"><span>Applications</span><span><span class="num">${week.apps}</span> / ${g.applications}</span></div>
-          <div class="meter ${week.apps >= g.applications ? 'met' : ''}"><span style="width:${pct(week.apps, g.applications)}%"></span></div>
-          <div class="goal-line" style="margin-top:14px"><span>Outreach touches</span><span><span class="num">${week.outreach}</span> / ${g.outreach}</span></div>
+          <div class="goal-line"><span>Informational requests</span><span><span class="num">${week.infos}</span> / ${g.informationals}</span></div>
+          <div class="meter ${week.infos >= g.informationals ? 'met' : ''}"><span style="width:${pct(week.infos, g.informationals)}%"></span></div>
+          <div class="goal-line" style="margin-top:14px"><span>Network touches</span><span><span class="num">${week.outreach}</span> / ${g.outreach}</span></div>
           <div class="meter ${week.outreach >= g.outreach ? 'met' : ''}"><span style="width:${pct(week.outreach, g.outreach)}%"></span></div>
-          <p class="muted small" style="margin-bottom:0">Streak: <b style="color:var(--ink)">${streak}</b> week${streak === 1 ? '' : 's'} hitting both goals${streak >= 2 ? ' 🔥' : ''} · weeks run Mon–Sun · goals editable in Settings</p>
+          <div class="goal-line" style="margin-top:14px"><span>Targeted applications</span><span><span class="num">${week.apps}</span> / ${g.applications}</span></div>
+          <div class="meter ${week.apps >= g.applications ? 'met' : ''}"><span style="width:${pct(week.apps, g.applications)}%"></span></div>
+          <p class="muted small">Streak: <b style="color:var(--ink)">${streak}</b> week${streak === 1 ? '' : 's'} hitting all three${streak >= 2 ? ' 🔥' : ''} · weeks run Mon–Sun · goals editable in Settings</p>
+          <p class="muted small" style="margin-bottom:0">Last 4 weeks: ${fn.touches} touches → ${fn.infos} informational requests → ${fn.meetings} meetings held → ${fn.referrals} referrals</p>
         </div>
         <div class="card">
-          <h2>Follow-ups due ${due.contacts.length + due.apps.length + due.tasks.length ? `<span class="overdue">(${due.contacts.length + due.apps.length + due.tasks.length})</span>` : ''}</h2>
-          ${(!due.contacts.length && !due.apps.length && !due.tasks.length) ? '<div class="empty-state">Nothing due. Set "next touch" dates on contacts, follow-up dates on applications, or due dates on tasks to see them here.</div>' : ''}
+          <h2>Follow-ups due ${due.contacts.length + due.apps.length + due.tasks.length + due.deadlines.length ? `<span class="overdue">(${due.contacts.length + due.apps.length + due.tasks.length + due.deadlines.length})</span>` : ''}</h2>
+          ${(!due.contacts.length && !due.apps.length && !due.tasks.length && !due.deadlines.length) ? '<div class="empty-state">Nothing due. Set "next touch" dates on contacts, follow-up dates on applications, or due dates on tasks to see them here.</div>' : ''}
           <ul class="item-list">
+            ${due.deadlines.map(a => `<li>
+              <span class="grow"><span class="who">⏰ ${escapeHtml(a.company)}</span>
+                <span class="muted small">${escapeHtml(a.role)}</span><br>
+                <span class="${a.deadline < t ? 'overdue' : 'due-today'}">deadline ${a.deadline < t ? 'passed ' + fmtDate(a.deadline) : fmtDate(a.deadline) + (a.deadline === t ? ' — today' : '')}</span></span>
+              <button class="ghost tiny" data-open-app="${a.id}">Open</button>
+            </li>`).join('')}
             ${due.contacts.map(c => `<li>
               <span class="grow"><span class="who">${escapeHtml(contactName(c))}</span>
                 <span class="muted small">${escapeHtml(c.company || '')}</span><br>

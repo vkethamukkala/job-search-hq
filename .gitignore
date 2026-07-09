@@ -12,4 +12,7 @@ Resume*
 # Hill seed data: personal job-search strategy and pitch narratives
 js/hill-seed.js
 
+# Personal seed: real stories, materials, references, plan phases — never commit
+js/personal-seed.js
+
 .DS_Store

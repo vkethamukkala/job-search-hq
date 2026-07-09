@@ -10,7 +10,8 @@ const Store = {
       settings: {
         startDate: start,
         endDate: addDaysISO(start, 90),
-        weeklyGoals: { applications: 10, outreach: 5 },
+        weeklyGoals: { applications: 2, outreach: 8, informationals: 3 },
+        phases: [],
         resumeText: '',
         jdText: '',
         lastBackup: null
@@ -22,7 +23,9 @@ const Store = {
       stories: [],
       tasks: [],
       notes: [],
-      hillTargets: []
+      hillTargets: [],
+      materials: [],
+      references: []
     };
   },
 
@@ -33,6 +36,7 @@ const Store = {
     this.state = saved && typeof saved === 'object' ? saved : d;
     this.state.settings = Object.assign(d.settings, this.state.settings || {});
     this.state.settings.weeklyGoals = Object.assign(d.settings.weeklyGoals, this.state.settings.weeklyGoals || {});
+    if (!Array.isArray(this.state.settings.phases)) this.state.settings.phases = [];
     this.state.contacts = this.state.contacts || [];
     this.state.applications = this.state.applications || [];
     this.state.activities = this.state.activities || [];
@@ -41,6 +45,8 @@ const Store = {
     this.state.tasks = this.state.tasks || [];
     this.state.notes = this.state.notes || [];
     this.state.hillTargets = this.state.hillTargets || [];
+    this.state.materials = this.state.materials || [];
+    this.state.references = this.state.references || [];
     return this.state;
   },
 
@@ -138,4 +144,15 @@ function fmtTime(hhmm) {
 
 function contactName(c) {
   return ((c.firstName || '') + ' ' + (c.lastName || '')).trim() || '(no name)';
+}
+
+/* The search-plan phase containing today, or null when no phases are defined
+   (the UI then falls back to the plain start/end countdown). */
+function currentPhase() {
+  const phases = (Store.state.settings.phases || []).filter(p => p.start && p.end);
+  if (!phases.length) return null;
+  const t = todayISO();
+  const idx = phases.findIndex(p => t >= p.start && t <= p.end);
+  if (idx === -1) return null;
+  return { phase: phases[idx], idx, total: phases.length };
 }

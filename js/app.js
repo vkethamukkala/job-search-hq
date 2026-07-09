@@ -6,6 +6,7 @@ const App = {
   init() {
     Store.load();
     Hill.ensureSeed();
+    this.applyPersonalSeed();
     document.querySelectorAll('#tab-nav .tab').forEach(btn =>
       btn.addEventListener('click', () => this.setTab(btn.dataset.tab)));
     document.getElementById('quick-note-btn').addEventListener('click', () => Notes.quickCapture());
@@ -35,10 +36,45 @@ const App = {
 
   renderHeader() {
     const s = Store.state.settings;
+    const el = document.getElementById('countdown-chip');
+    const cp = currentPhase();
+    if (cp) {
+      const left = Math.max(0, daysBetween(todayISO(), cp.phase.end));
+      el.textContent = 'Phase ' + (cp.idx + 1) + '/' + cp.total + ' · ' + cp.phase.name + ' · ' + left + 'd left in phase';
+      return;
+    }
     const daysLeft = Math.max(0, daysBetween(todayISO(), s.endDate));
     const total = Math.max(1, daysBetween(s.startDate, s.endDate));
     const dayNum = Math.min(total, Math.max(1, daysBetween(s.startDate, todayISO()) + 1));
-    document.getElementById('countdown-chip').textContent = 'Day ' + dayNum + ' · ' + daysLeft + ' days left';
+    el.textContent = 'Day ' + dayNum + ' · ' + daysLeft + ' days left';
+  },
+
+  /* One-time application of the gitignored personal seed (js/personal-seed.js):
+     purges known demo records by id, overrides settings, and seeds real
+     stories / materials / references / tracked applications / tasks / notes.
+     Guarded by settings.seededPersonal so user edits and deletions stick. */
+  applyPersonalSeed() {
+    const P = typeof PERSONAL_SEED !== 'undefined' ? PERSONAL_SEED : null;
+    if (!P || Store.state.settings.seededPersonal) return;
+    const st = Store.state;
+    const purge = P.purge || {};
+    ['contacts', 'applications', 'meetings', 'activities', 'stories', 'tasks', 'notes'].forEach(k => {
+      if (Array.isArray(purge[k]) && purge[k].length) st[k] = st[k].filter(x => !purge[k].includes(x.id));
+    });
+    if (P.settings) Object.assign(st.settings, P.settings);
+    (P.stories || []).forEach(s => st.stories.push(Object.assign(
+      { id: Store.uid(), title: '', situation: '', action: '', result: '', skills: [], source: 'job', createdAt: todayISO() }, s)));
+    (P.materials || []).forEach(m => st.materials.push(Object.assign(
+      { id: Store.uid(), kind: 'writing-sample', title: '', hook: '', status: 'draft', body: '', createdAt: todayISO(), updatedAt: todayISO() }, m)));
+    (P.references || []).forEach(r => st.references.push(Object.assign(
+      { id: Store.uid(), name: '', role: '', status: 'to-ask', notes: '', contactId: '', createdAt: todayISO() }, r)));
+    (P.applications || []).forEach(a => Pipeline.addApplication(a));
+    (P.tasks || []).forEach(t => st.tasks.push(
+      { id: Store.uid(), text: t.text, done: false, dueDate: t.dueDate || null, createdAt: todayISO(), doneAt: null }));
+    (P.notes || []).forEach(n => st.notes.push(
+      { id: Store.uid(), title: n.title || '', body: n.body || '', tags: n.tags || [], pinned: !!n.pinned, createdAt: todayISO(), updatedAt: todayISO() }));
+    st.settings.seededPersonal = true;
+    Store.save();
   },
 
   renderBackupBanner() {
@@ -68,12 +104,24 @@ const App = {
             <div><label>Start date</label><input type="date" id="st-start" value="${s.startDate}"></div>
             <div><label>End date</label><input type="date" id="st-end" value="${s.endDate}"></div>
           </div>
-          <p class="muted small">The countdown on the Overview runs between these dates.</p>
+          <p class="muted small">The countdown on the Overview runs between these dates (phases below take over the display when defined).</p>
           <h2 style="margin-top:14px">Weekly goals</h2>
           <div class="form-row">
-            <div><label>Applications / week</label><input type="number" min="0" id="st-apps" value="${s.weeklyGoals.applications}" style="width:90px"></div>
-            <div><label>Outreach touches / week</label><input type="number" min="0" id="st-out" value="${s.weeklyGoals.outreach}" style="width:90px"></div>
+            <div><label>Informational requests / wk</label><input type="number" min="0" id="st-info" value="${s.weeklyGoals.informationals}" style="width:90px"></div>
+            <div><label>Network touches / wk</label><input type="number" min="0" id="st-out" value="${s.weeklyGoals.outreach}" style="width:90px"></div>
+            <div><label>Targeted applications / wk</label><input type="number" min="0" id="st-apps" value="${s.weeklyGoals.applications}" style="width:90px"></div>
           </div>
+          <p class="muted small">Hill hiring runs on informationals and referrals, not mass applications — the goals measure what predicts an offer.</p>
+          <h2 style="margin-top:14px">Search phases</h2>
+          <p class="muted small">Named stretches of the plan (e.g. liaison push, August recess, vacancy boards, transition window). The header chip and Overview timeline follow these.</p>
+          ${(s.phases || []).map((p, i) => `
+            <div class="form-row" style="align-items:flex-end">
+              <div style="flex:1;min-width:180px"><label>Phase ${i + 1}</label><input data-ph-name="${i}" value="${escapeHtml(p.name || '')}"></div>
+              <div><label>Start</label><input type="date" data-ph-start="${i}" value="${p.start || ''}"></div>
+              <div><label>End</label><input type="date" data-ph-end="${i}" value="${p.end || ''}"></div>
+              <div><button class="ghost tiny" data-ph-del="${i}" title="Remove phase">✕</button></div>
+            </div>`).join('')}
+          <button class="tiny" id="st-ph-add" style="margin-top:6px">+ Add phase</button>
         </div>
         <div class="card">
           <h2>Data</h2>
@@ -97,6 +145,20 @@ const App = {
     el.querySelector('#st-end').addEventListener('change', e => { s.endDate = e.target.value || addDaysISO(s.startDate, 90); save(); });
     el.querySelector('#st-apps').addEventListener('change', e => { s.weeklyGoals.applications = Math.max(0, Number(e.target.value) || 0); save(); });
     el.querySelector('#st-out').addEventListener('change', e => { s.weeklyGoals.outreach = Math.max(0, Number(e.target.value) || 0); save(); });
+    el.querySelector('#st-info').addEventListener('change', e => { s.weeklyGoals.informationals = Math.max(0, Number(e.target.value) || 0); save(); });
+
+    el.querySelectorAll('[data-ph-name]').forEach(inp => inp.addEventListener('change', () => { s.phases[Number(inp.dataset.phName)].name = inp.value.trim(); save(); }));
+    el.querySelectorAll('[data-ph-start]').forEach(inp => inp.addEventListener('change', () => { s.phases[Number(inp.dataset.phStart)].start = inp.value || ''; save(); }));
+    el.querySelectorAll('[data-ph-end]').forEach(inp => inp.addEventListener('change', () => { s.phases[Number(inp.dataset.phEnd)].end = inp.value || ''; save(); }));
+    el.querySelectorAll('[data-ph-del]').forEach(btn => btn.addEventListener('click', () => {
+      s.phases.splice(Number(btn.dataset.phDel), 1); Store.save(); this.render();
+    }));
+    el.querySelector('#st-ph-add').addEventListener('click', () => {
+      const last = s.phases[s.phases.length - 1];
+      const start = last && last.end ? addDaysISO(last.end, 1) : todayISO();
+      s.phases.push({ name: 'New phase', start, end: addDaysISO(start, 30) });
+      Store.save(); this.render();
+    });
 
     el.querySelector('#st-export').addEventListener('click', () => { Store.exportJSON(); this.render(); });
     el.querySelector('#st-import').addEventListener('click', () => el.querySelector('#st-file').click());

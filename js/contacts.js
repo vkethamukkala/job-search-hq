@@ -168,6 +168,7 @@ const Contacts = {
           <div><label>Type</label>
             <select id="act-type">
               <option value="outreach">Outreach message</option>
+              <option value="informational">Informational request</option>
               <option value="coffee-chat">Coffee chat</option>
               <option value="call">Call</option>
               <option value="email">Email</option>

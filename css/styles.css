@@ -594,3 +594,37 @@ footer.app-foot {
 .hook-tag { border-color: rgba(57, 135, 229, 0.45); color: var(--ink-2); }
 
 .hill-line { display: flex; align-items: center; gap: 10px; }
+
+/* ---------- Search-plan phase timeline (Overview) ---------- */
+.phase-strip { display: flex; gap: 6px; margin-top: 14px; }
+.phase-seg { min-width: 0; }
+.phase-seg .phase-name {
+  font-size: 11px; color: var(--ink-muted); margin-bottom: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.phase-seg.current .phase-name { color: var(--ink); font-weight: 600; }
+.phase-seg .phase-bar {
+  height: 8px; border-radius: 4px; background: var(--accent-track); overflow: hidden;
+}
+.phase-seg .phase-bar span { display: block; height: 100%; background: var(--accent); }
+.phase-seg.past .phase-bar span { background: rgba(195, 194, 183, 0.45); }
+.phase-seg.past .phase-bar { background: rgba(255, 255, 255, 0.06); }
+.phase-seg .phase-dates { font-size: 10px; color: var(--ink-muted); margin-top: 3px; }
+
+/* ---------- Pipeline tracks & deadlines ---------- */
+.track-chip {
+  display: inline-block; font-size: 10px; padding: 1px 7px; margin: 2px 0;
+  border: 1px solid var(--border); border-radius: 10px; color: var(--ink-2);
+}
+
+/* ---------- Hill materials & references (Resume tab) ---------- */
+.mat-kind-head { margin: 14px 0 2px; font-size: 12px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.mat-item {
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; margin-top: 8px; cursor: pointer;
+  background: var(--surface-2);
+}
+.mat-item:hover { border-color: rgba(255, 255, 255, 0.22); }
+.mat-item.open { cursor: default; }
+.mat-head { display: flex; align-items: center; gap: 8px; }
+.mat-editor { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
