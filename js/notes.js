@@ -1,7 +1,7 @@
 /* Notes — tasks + note cards side by side, plus header quick-capture from any tab. */
 
 const Notes = {
-  ui: { search: '', tag: '', showAddNote: false, selectedId: null },
+  ui: { search: '', tag: '', showAddNote: false, selectedId: null, editTaskId: null },
 
   addTask(text, dueDate) {
     Store.state.tasks.push({
@@ -61,12 +61,21 @@ const Notes = {
             <div><input type="date" id="tk-due" title="Due date (optional)"></div>
             <div><button class="primary" id="tk-add">Add</button></div>
           </div>
-          ${open.length ? open.map(x => `
+          ${open.length ? open.map(x => x.id === this.ui.editTaskId ? `
+            <div class="task-row" data-id="${x.id}">
+              <div class="form-row" style="flex:1;align-items:center">
+                <div style="flex:1;min-width:140px"><input id="te-text" value="${escapeHtml(x.text)}"></div>
+                <div><input type="date" id="te-due" value="${x.dueDate || ''}" title="Due date (clear to remove)"></div>
+                <div><button class="primary tiny" id="te-save">Save</button></div>
+                <div><button class="ghost tiny" id="te-cancel">Cancel</button></div>
+              </div>
+            </div>` : `
             <div class="task-row" data-id="${x.id}">
               <label class="prep-check"><input type="checkbox" data-task-toggle="${x.id}">
                 <span>${escapeHtml(x.text)}
                   ${x.dueDate ? `<span class="${x.dueDate < t ? 'overdue' : x.dueDate === t ? 'due-today' : 'muted'} small"> · ${x.dueDate < t ? 'overdue ' : x.dueDate === t ? 'today' : 'due '}${x.dueDate === t ? '' : fmtDate(x.dueDate)}</span>` : ''}
                 </span></label>
+              <button class="ghost tiny" data-task-edit="${x.id}" title="Edit">✎</button>
               <button class="ghost tiny" data-task-del="${x.id}" title="Delete">✕</button>
             </div>`).join('')
           : '<p class="muted small">Nothing open. Add the next concrete action — even "draft one sentence" counts.</p>'}
@@ -154,6 +163,30 @@ const Notes = {
       Store.state.tasks = Store.state.tasks.filter(t => t.id !== btn.dataset.taskDel);
       Store.save(); App.render();
     }));
+    el.querySelectorAll('[data-task-edit]').forEach(btn => btn.addEventListener('click', () => {
+      this.ui.editTaskId = btn.dataset.taskEdit;
+      App.render();
+      const inp = document.getElementById('te-text');
+      if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+    }));
+    const teSave = el.querySelector('#te-save');
+    if (teSave) {
+      const saveEdit = () => {
+        const x = Store.state.tasks.find(t2 => t2.id === this.ui.editTaskId);
+        const text = el.querySelector('#te-text').value.trim();
+        if (!text) { alert('Task text can’t be empty — use ✕ to delete it instead.'); return; }
+        x.text = text;
+        x.dueDate = el.querySelector('#te-due').value || null;
+        this.ui.editTaskId = null;
+        Store.save(); App.render();
+      };
+      teSave.addEventListener('click', saveEdit);
+      el.querySelector('#te-text').addEventListener('keydown', e => {
+        if (e.key === 'Enter') saveEdit();
+        if (e.key === 'Escape') { this.ui.editTaskId = null; App.render(); }
+      });
+      el.querySelector('#te-cancel').addEventListener('click', () => { this.ui.editTaskId = null; App.render(); });
+    }
     const clear = el.querySelector('#tk-clear');
     if (clear) clear.addEventListener('click', () => {
       Store.state.tasks = Store.state.tasks.filter(t => !t.done);
