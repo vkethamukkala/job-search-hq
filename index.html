@@ -4,6 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Job Search HQ</title>
+<script>
+/* Apply the saved theme before first paint so light-mode users don't get a
+   dark flash. Key must match Store.KEY; App.applyTheme owns it after load. */
+(function () {
+  try {
+    var s = JSON.parse(localStorage.getItem('career-dashboard-v1'));
+    var t = s && s.settings && s.settings.theme;
+    if (t === 'system') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    if (t === 'light') document.documentElement.dataset.theme = 'light';
+  } catch (e) { /* corrupted state — fall through to the dark default */ }
+})();
+</script>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>

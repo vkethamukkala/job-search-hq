@@ -7,10 +7,22 @@ const App = {
     Store.load();
     Hill.ensureSeed();
     this.applyPersonalSeed();
+    this.applyTheme();
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+      if (Store.state.settings.theme === 'system') this.applyTheme();
+    });
     document.querySelectorAll('#tab-nav .tab').forEach(btn =>
       btn.addEventListener('click', () => this.setTab(btn.dataset.tab)));
     document.getElementById('quick-note-btn').addEventListener('click', () => Notes.quickCapture());
     this.render();
+  },
+
+  /* Dark is the default; the inline <head> script mirrors this before first
+     paint, and backup restore / wipe go through render() → applyTheme too. */
+  applyTheme() {
+    let t = Store.state.settings.theme || 'dark';
+    if (t === 'system') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
   },
 
   setTab(tab) {
@@ -21,6 +33,7 @@ const App = {
   },
 
   render() {
+    this.applyTheme();
     this.renderHeader();
     this.renderBackupBanner();
     if (this.tab === 'overview') Dashboard.render();
@@ -124,7 +137,14 @@ const App = {
           <button class="tiny" id="st-ph-add" style="margin-top:6px">+ Add phase</button>
         </div>
         <div class="card">
-          <h2>Data</h2>
+          <h2>Appearance</h2>
+          <div class="form-row">
+            <div><label>Theme</label><select id="st-theme">
+              ${[['dark', 'Dark'], ['light', 'Light'], ['system', 'Match system']].map(([v, label]) =>
+                `<option value="${v}" ${(s.theme || 'dark') === v ? 'selected' : ''}>${label}</option>`).join('')}
+            </select></div>
+          </div>
+          <h2 style="margin-top:14px">Data</h2>
           <p class="muted small">Everything is stored locally in this browser (localStorage). Export a JSON backup regularly —
             keep it in this folder's <code>data/</code> directory or anywhere safe.
             ${s.lastBackup ? 'Last backup: <b style="color:var(--ink)">' + fmtDate(s.lastBackup) + '</b>.' : '<b class="due-today">No backup yet.</b>'}</p>
@@ -158,6 +178,12 @@ const App = {
       const start = last && last.end ? addDaysISO(last.end, 1) : todayISO();
       s.phases.push({ name: 'New phase', start, end: addDaysISO(start, 30) });
       Store.save(); this.render();
+    });
+
+    el.querySelector('#st-theme').addEventListener('change', e => {
+      s.theme = e.target.value;
+      Store.save();
+      this.applyTheme();
     });
 
     el.querySelector('#st-export').addEventListener('click', () => { Store.exportJSON(); this.render(); });

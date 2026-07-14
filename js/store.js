@@ -12,6 +12,7 @@ const Store = {
         endDate: addDaysISO(start, 90),
         weeklyGoals: { applications: 2, outreach: 8, informationals: 3 },
         phases: [],
+        theme: 'dark', // 'dark' | 'light' | 'system'
         resumeText: '',
         jdText: '',
         lastBackup: null
