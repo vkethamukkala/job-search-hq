@@ -1,14 +1,15 @@
 /* Contacts — table, search/filters, quick-add, LinkedIn CSV import, detail drawer. */
 
 const Contacts = {
-  ui: { search: '', warmth: '', sort: 'name', sortDir: 1, selectedId: null, preview: null, showAdd: false },
+  ui: { search: '', warmth: '', sort: 'name', sortDir: 1, selectedId: null, preview: null, showAdd: false,
+    boardOpen: true, showAddPerson: false, showAddBucket: false },
 
   addContact(fields) {
     const c = Object.assign({
       id: Store.uid(),
       firstName: '', lastName: '', company: '', position: '',
       email: '', linkedinUrl: '', tags: [], warmth: 'neutral',
-      nextTouchDate: null, notes: '', createdAt: todayISO()
+      bucket: '', nextTouchDate: null, notes: '', createdAt: todayISO()
     }, fields);
     Store.state.contacts.push(c);
     return c;
@@ -27,6 +28,7 @@ const Contacts = {
     const list = this.filtered();
 
     el.innerHTML = `
+      ${this.boardHtml()}
       <div class="toolbar">
         <input type="search" id="ct-search" placeholder="Search name, company, position…" value="${escapeHtml(ui.search)}" style="min-width:220px">
         <select id="ct-warmth">
@@ -59,12 +61,67 @@ const Contacts = {
     this.bind(el);
   },
 
+  /* People-of-interest board: contacts with a bucket, grouped by bucket.
+     For scouting NEW people (campaign staff, agency folks) — the imported
+     network stays in the table below unless a contact is given a bucket. */
+  boardHtml() {
+    const ui = this.ui;
+    const buckets = Store.state.settings.buckets || [];
+    const people = Store.state.contacts.filter(c => c.bucket);
+    return `
+      <div class="bucket-head">
+        <button class="bk-title" id="bk-toggle">${ui.boardOpen ? '▾' : '▸'} People of interest <span class="count">(${people.length})</span></button>
+        <span class="muted small">the people you're scouting, by bucket — click a card for details</span>
+        <span class="spacer"></span>
+        <button class="tiny" id="bk-new-bucket">+ New bucket</button>
+        <button class="primary tiny" id="bk-add-person">+ Add person</button>
+      </div>
+      <div class="card ${ui.showAddBucket ? '' : 'hidden'}" id="bk-bucket-form" style="margin-top:8px">
+        <div class="form-row">
+          <div style="flex:1;min-width:160px"><label>New bucket name</label><input id="bk-bucket-name" placeholder="e.g. Cooper campaign"></div>
+          <div><button class="primary" id="bk-bucket-save">Add bucket</button></div>
+        </div>
+      </div>
+      <div class="card ${ui.showAddPerson ? '' : 'hidden'}" id="bk-person-form" style="margin-top:8px">
+        <h2>Add person of interest</h2>
+        <div class="form-row">
+          <div><label>Name *</label><input id="bp-name" placeholder="Jane Doe"></div>
+          <div><label>Role</label><input id="bp-role" placeholder="Field director"></div>
+          <div><label>Org</label><input id="bp-org" placeholder="Cooper for NC"></div>
+          <div style="min-width:200px"><label>LinkedIn URL</label><input id="bp-url" placeholder="https://linkedin.com/in/…"></div>
+          <div><label>Bucket</label>
+            <select id="bp-bucket">${buckets.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')}</select></div>
+          <div style="flex:1;min-width:160px"><label>Note</label><input id="bp-note" placeholder="Why they're interesting"></div>
+          <div><button class="primary" id="bp-save">Save</button></div>
+        </div>
+      </div>
+      ${ui.boardOpen ? `<div class="bucket-board section-gap">
+        ${buckets.map(b => {
+          const cards = people.filter(c => c.bucket === b);
+          return `<div class="kanban-col">
+            <h3>${escapeHtml(b)} <span class="count">${cards.length}</span>
+              <button class="ghost tiny bk-del" data-bucket-del="${escapeHtml(b)}" title="Remove bucket (people stay in contacts)">✕</button></h3>
+            ${cards.map(c => `<div class="kcard" data-card-id="${c.id}">
+              <div class="co">${escapeHtml(contactName(c))}</div>
+              <div class="role">${escapeHtml([c.position, c.company].filter(Boolean).join(' · '))}</div>
+              ${c.notes ? `<div class="small muted">${escapeHtml(c.notes.split('\n')[0].slice(0, 90))}</div>` : ''}
+              <div class="meta">
+                ${c.linkedinUrl ? `<a href="${escapeHtml(c.linkedinUrl)}" target="_blank" style="color:var(--accent)">LinkedIn ↗</a>` : '<span></span>'}
+                ${c.warmth === 'warm' ? '<span class="warmth-warm">warm</span>' : ''}
+              </div>
+            </div>`).join('')}
+            ${cards.length ? '' : '<div class="muted small" style="padding:6px 2px">Empty — add someone or set a contact’s bucket in their drawer.</div>'}
+          </div>`;
+        }).join('')}
+      </div>` : '<div class="section-gap"></div>'}`;
+  },
+
   filtered() {
     const q = this.ui.search.trim().toLowerCase();
     let list = Store.state.contacts.filter(c => {
       if (this.ui.warmth && c.warmth !== this.ui.warmth) return false;
       if (!q) return true;
-      return (contactName(c) + ' ' + (c.company || '') + ' ' + (c.position || '') + ' ' + (c.tags || []).join(' '))
+      return (contactName(c) + ' ' + (c.company || '') + ' ' + (c.position || '') + ' ' + (c.bucket || '') + ' ' + (c.tags || []).join(' '))
         .toLowerCase().includes(q);
     });
     const key = this.ui.sort, dir = this.ui.sortDir;
@@ -159,6 +216,12 @@ const Contacts = {
               <option value="cold" ${c.warmth === 'cold' ? 'selected' : ''}>Cold</option>
             </select></div>
           <div class="field"><label>Next touch date</label><input type="date" data-cf="nextTouchDate" value="${c.nextTouchDate || ''}"></div>
+          <div class="field"><label>Bucket (people-of-interest board)</label>
+            <select data-cf="bucket">
+              <option value="">No bucket</option>
+              ${(Store.state.settings.buckets || []).map(b => `<option value="${escapeHtml(b)}" ${(c.bucket || '') === b ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('')}
+              ${c.bucket && !(Store.state.settings.buckets || []).includes(c.bucket) ? `<option value="${escapeHtml(c.bucket)}" selected>${escapeHtml(c.bucket)}</option>` : ''}
+            </select></div>
         </div>
         <div class="field"><label>Tags (comma-separated)</label><input id="ctd-tags" value="${escapeHtml((c.tags || []).join(', '))}"></div>
         <div class="field"><label>Notes</label><textarea data-cf="notes" rows="3">${escapeHtml(c.notes || '')}</textarea></div>
@@ -190,6 +253,55 @@ const Contacts = {
 
   bind(el) {
     const rerender = () => App.render();
+
+    // People-of-interest board
+    el.querySelector('#bk-toggle').addEventListener('click', () => { this.ui.boardOpen = !this.ui.boardOpen; rerender(); });
+    el.querySelector('#bk-add-person').addEventListener('click', () => { this.ui.showAddPerson = !this.ui.showAddPerson; rerender(); });
+    el.querySelector('#bk-new-bucket').addEventListener('click', () => { this.ui.showAddBucket = !this.ui.showAddBucket; rerender(); });
+    el.querySelector('#bk-bucket-save').addEventListener('click', () => {
+      const name = el.querySelector('#bk-bucket-name').value.trim();
+      if (!name) return;
+      const bs = Store.state.settings.buckets;
+      if (!bs.some(b => b.toLowerCase() === name.toLowerCase())) bs.push(name);
+      this.ui.showAddBucket = false;
+      Store.save(); rerender();
+    });
+    el.querySelector('#bp-save').addEventListener('click', () => {
+      const v = id => el.querySelector('#' + id).value.trim();
+      const name = v('bp-name');
+      if (!name) { alert('A name is required.'); return; }
+      const parts = name.split(/\s+/);
+      const firstName = parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0];
+      const lastName = parts.length > 1 ? parts[parts.length - 1] : '';
+      const existing = Store.state.contacts.find(c =>
+        this.dupeKey(c) === this.dupeKey({ firstName, lastName, company: v('bp-org'), linkedinUrl: v('bp-url') }));
+      if (existing) {
+        this.ui.showAddPerson = false;
+        this.ui.selectedId = existing.id;
+        rerender();
+        App.flash(contactName(existing) + ' is already in your contacts — opened. Set their bucket in the drawer.');
+        return;
+      }
+      this.addContact({
+        firstName, lastName, position: v('bp-role'), company: v('bp-org'),
+        linkedinUrl: v('bp-url'), notes: v('bp-note'),
+        bucket: el.querySelector('#bp-bucket').value, warmth: 'cold', tags: ['prospect']
+      });
+      this.ui.showAddPerson = false;
+      Store.save(); rerender();
+    });
+    el.querySelectorAll('[data-bucket-del]').forEach(btn => btn.addEventListener('click', () => {
+      const b = btn.dataset.bucketDel;
+      const n = Store.state.contacts.filter(c => c.bucket === b).length;
+      if (!confirm('Remove the "' + b + '" bucket?' + (n ? ' Its ' + n + ' ' + (n === 1 ? 'person stays' : 'people stay') + ' in contacts, just unbucketed.' : ''))) return;
+      Store.state.settings.buckets = Store.state.settings.buckets.filter(x => x !== b);
+      Store.state.contacts.forEach(c => { if (c.bucket === b) c.bucket = ''; });
+      Store.save(); rerender();
+    }));
+    el.querySelectorAll('.kcard[data-card-id]').forEach(card => card.addEventListener('click', e => {
+      if (e.target.closest('a')) return; // LinkedIn link opens normally
+      this.ui.selectedId = card.dataset.cardId; rerender();
+    }));
 
     el.querySelector('#ct-search').addEventListener('input', e => {
       this.ui.search = e.target.value;

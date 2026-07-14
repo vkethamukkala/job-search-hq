@@ -669,3 +669,18 @@ footer.app-foot {
 .mat-item.open { cursor: default; }
 .mat-head { display: flex; align-items: center; gap: 8px; }
 .mat-editor { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+
+/* ---------- People-of-interest bucket board (Contacts) ---------- */
+.bucket-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bk-title {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--ink); font-size: 15px; font-weight: 600; font-family: inherit;
+}
+.bk-title .count { color: var(--ink-muted); font-weight: 400; font-size: 13px; }
+.bucket-board {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px; margin-top: 10px;
+}
+.bucket-board .kanban-col h3 { gap: 6px; justify-content: flex-start; }
+.bucket-board .kanban-col h3 .bk-del { margin-left: auto; }
+.bucket-board .kcard { cursor: pointer; }

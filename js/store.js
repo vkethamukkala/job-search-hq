@@ -12,6 +12,7 @@ const Store = {
         endDate: addDaysISO(start, 90),
         weeklyGoals: { applications: 2, outreach: 8, informationals: 3 },
         phases: [],
+        buckets: ['Think tank', 'Consultancy', 'Legislative'],
         theme: 'dark', // 'dark' | 'light' | 'system'
         resumeText: '',
         jdText: '',
@@ -38,6 +39,7 @@ const Store = {
     this.state.settings = Object.assign(d.settings, this.state.settings || {});
     this.state.settings.weeklyGoals = Object.assign(d.settings.weeklyGoals, this.state.settings.weeklyGoals || {});
     if (!Array.isArray(this.state.settings.phases)) this.state.settings.phases = [];
+    if (!Array.isArray(this.state.settings.buckets)) this.state.settings.buckets = d.settings.buckets;
     this.state.contacts = this.state.contacts || [];
     this.state.applications = this.state.applications || [];
     this.state.activities = this.state.activities || [];
