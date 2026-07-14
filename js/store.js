@@ -13,6 +13,7 @@ const Store = {
         weeklyGoals: { applications: 2, outreach: 8, informationals: 3 },
         phases: [],
         buckets: ['Think tank', 'Consultancy', 'Legislative'],
+        skillCategories: ['Tools', 'Languages', 'Certifications', 'Domain'],
         theme: 'dark', // 'dark' | 'light' | 'system'
         resumeText: '',
         jdText: '',
@@ -23,6 +24,7 @@ const Store = {
       activities: [],
       meetings: [],
       stories: [],
+      skills: [],
       tasks: [],
       notes: [],
       hillTargets: [],
@@ -40,11 +42,13 @@ const Store = {
     this.state.settings.weeklyGoals = Object.assign(d.settings.weeklyGoals, this.state.settings.weeklyGoals || {});
     if (!Array.isArray(this.state.settings.phases)) this.state.settings.phases = [];
     if (!Array.isArray(this.state.settings.buckets)) this.state.settings.buckets = d.settings.buckets;
+    if (!Array.isArray(this.state.settings.skillCategories)) this.state.settings.skillCategories = d.settings.skillCategories;
     this.state.contacts = this.state.contacts || [];
     this.state.applications = this.state.applications || [];
     this.state.activities = this.state.activities || [];
     this.state.meetings = this.state.meetings || [];
     this.state.stories = this.state.stories || [];
+    this.state.skills = this.state.skills || [];
     this.state.tasks = this.state.tasks || [];
     this.state.notes = this.state.notes || [];
     this.state.hillTargets = this.state.hillTargets || [];

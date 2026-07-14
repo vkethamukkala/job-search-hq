@@ -42,6 +42,7 @@ const App = {
     else if (this.tab === 'pipeline') Pipeline.render();
     else if (this.tab === 'hill') Hill.render();
     else if (this.tab === 'stories') Stories.render();
+    else if (this.tab === 'skills') Skills.render();
     else if (this.tab === 'resume') Resume.render();
     else if (this.tab === 'notes') Notes.render();
     else if (this.tab === 'settings') this.renderSettings();

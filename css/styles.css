@@ -507,6 +507,35 @@ td.name-cell { color: var(--ink); }
 .story-card:hover { border-color: var(--border-strong); }
 .story-card .who { color: var(--ink); font-weight: 600; }
 
+/* ---------- Skills ---------- */
+
+.skill-group h3 { margin: 18px 0 8px; color: var(--ink-2); }
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+.skill-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.skill-card:hover { border-color: var(--border-strong); }
+.skill-card .who { color: var(--ink); font-weight: 600; }
+
+.ms-row, .log-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+.ms-row:last-of-type, .log-row:last-of-type { border-bottom: none; }
+.ms-row.done span { text-decoration: line-through; color: var(--ink-muted); }
+.ms-row > button, .log-row > button { margin-left: auto; }
+
 .prompt-line {
   background: var(--surface-2);
   border: 1px solid var(--border);
