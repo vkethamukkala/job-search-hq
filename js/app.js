@@ -14,6 +14,7 @@ const App = {
     document.querySelectorAll('#tab-nav .tab').forEach(btn =>
       btn.addEventListener('click', () => this.setTab(btn.dataset.tab)));
     document.getElementById('quick-note-btn').addEventListener('click', () => Notes.quickCapture());
+    AutoBackup.init().then(() => this.render());
     this.render();
   },
 
@@ -94,6 +95,13 @@ const App = {
   renderBackupBanner() {
     const el = document.getElementById('backup-banner');
     const s = Store.state.settings;
+    if (AutoBackup.permission === 'prompt') {
+      el.classList.remove('hidden');
+      el.innerHTML = `Auto-backup is paused — the browser dropped folder access after restarting.
+        <span class="spacer"></span><button class="tiny" id="bb-resume">Resume auto-backup</button>`;
+      el.querySelector('#bb-resume').addEventListener('click', () => AutoBackup.resume().then(() => this.render()));
+      return;
+    }
     const hasData = Store.state.contacts.length || Store.state.applications.length || (s.resumeText || '').length;
     const stale = !s.lastBackup || daysBetween(s.lastBackup, todayISO()) >= 7;
     if (hasData && stale) {
@@ -155,6 +163,19 @@ const App = {
             <input type="file" id="st-file" accept=".json,application/json" class="hidden">
           </div>
           <p class="muted small" id="st-msg"></p>
+          <h2 style="margin-top:14px">Automatic backup</h2>
+          ${AutoBackup.supported() ? `
+            <p class="muted small" id="ab-status">${AutoBackup.permission === 'off'
+              ? 'Pick a folder once (this project’s <code>data/</code> is gitignored and ideal) and every change auto-saves a backup there — no more manual exports.'
+              : escapeHtml(AutoBackup.statusText())}</p>
+            <div class="form-row">
+              ${AutoBackup.permission === 'granted'
+                ? '<button id="ab-off">Turn off auto-backup</button>'
+                : AutoBackup.permission === 'prompt'
+                  ? '<button class="primary" id="ab-resume">Resume auto-backup</button><button id="ab-off">Turn off</button>'
+                  : '<button class="primary" id="ab-pick">Choose backup folder…</button>'}
+            </div>`
+          : '<p class="muted small">Your browser doesn’t support automatic folder backups (needs Chrome or Edge) — keep using manual exports.</p>'}
           <h2 style="margin-top:14px">Danger zone</h2>
           <button class="danger" id="st-wipe">Erase all data</button>
         </div>
@@ -186,6 +207,19 @@ const App = {
       Store.save();
       this.applyTheme();
     });
+
+    const abPick = el.querySelector('#ab-pick');
+    if (abPick) abPick.addEventListener('click', async () => {
+      try {
+        await AutoBackup.pickFolder();
+        this.render();
+        this.flash('Auto-backup is on — every change now saves a backup to that folder.');
+      } catch (e) { /* picker cancelled */ }
+    });
+    const abResume = el.querySelector('#ab-resume');
+    if (abResume) abResume.addEventListener('click', () => AutoBackup.resume().then(() => this.render()));
+    const abOff = el.querySelector('#ab-off');
+    if (abOff) abOff.addEventListener('click', () => AutoBackup.disable().then(() => this.render()));
 
     el.querySelector('#st-export').addEventListener('click', () => { Store.exportJSON(); this.render(); });
     el.querySelector('#st-import').addEventListener('click', () => el.querySelector('#st-file').click());

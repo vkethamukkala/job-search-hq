@@ -59,6 +59,7 @@ const Store = {
 
   save() {
     localStorage.setItem(this.KEY, JSON.stringify(this.state));
+    if (typeof AutoBackup !== 'undefined') AutoBackup.schedule();
   },
 
   uid() {
