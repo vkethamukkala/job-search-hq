@@ -14,6 +14,7 @@ const Store = {
         phases: [],
         buckets: ['Think tank', 'Consultancy', 'Legislative'],
         skillCategories: ['Tools', 'Languages', 'Certifications', 'Domain'],
+        pathsHorizonMonths: 18,
         theme: 'dark', // 'dark' | 'light' | 'system'
         resumeText: '',
         jdText: '',
@@ -25,6 +26,7 @@ const Store = {
       meetings: [],
       stories: [],
       skills: [],
+      careerPaths: [],
       tasks: [],
       notes: [],
       hillTargets: [],
@@ -49,6 +51,7 @@ const Store = {
     this.state.meetings = this.state.meetings || [];
     this.state.stories = this.state.stories || [];
     this.state.skills = this.state.skills || [];
+    this.state.careerPaths = this.state.careerPaths || [];
     this.state.tasks = this.state.tasks || [];
     this.state.notes = this.state.notes || [];
     this.state.hillTargets = this.state.hillTargets || [];
@@ -109,6 +112,19 @@ function todayISO() {
 function addDaysISO(iso, days) {
   const d = parseISO(iso);
   d.setDate(d.getDate() + days);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+/* First day of the month containing the given date. */
+function monthStartISO(iso) {
+  return iso.slice(0, 8) + '01';
+}
+
+/* Add whole months. Only safe on day-01 dates (no 31st → next-month overflow),
+   which is all the Paths axis math ever feeds it. */
+function addMonthsISO(iso, months) {
+  const d = parseISO(iso);
+  d.setMonth(d.getMonth() + months);
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 

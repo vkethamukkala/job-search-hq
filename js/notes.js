@@ -3,11 +3,19 @@
 const Notes = {
   ui: { search: '', tag: '', showAddNote: false, selectedId: null, editTaskId: null },
 
-  addTask(text, dueDate) {
+  addTask(text, dueDate, pathId) {
     Store.state.tasks.push({
       id: Store.uid(), text, done: false,
-      dueDate: dueDate || null, createdAt: todayISO(), doneAt: null
+      dueDate: dueDate || null, pathId: pathId || null,
+      createdAt: todayISO(), doneAt: null
     });
+  },
+
+  /* Colored career-path chip for a task, '' when unlinked or the path is gone. */
+  pathTag(x) {
+    if (!x.pathId) return '';
+    const p = Store.state.careerPaths.find(cp => cp.id === x.pathId);
+    return p ? `<span class="tag path-tag path-${p.color}">${escapeHtml(p.name)}</span>` : '';
   },
 
   addNote(title, body, tags) {
@@ -74,6 +82,7 @@ const Notes = {
               <label class="prep-check"><input type="checkbox" data-task-toggle="${x.id}">
                 <span>${escapeHtml(x.text)}
                   ${x.dueDate ? `<span class="${x.dueDate < t ? 'overdue' : x.dueDate === t ? 'due-today' : 'muted'} small"> · ${x.dueDate < t ? 'overdue ' : x.dueDate === t ? 'today' : 'due '}${x.dueDate === t ? '' : fmtDate(x.dueDate)}</span>` : ''}
+                  ${this.pathTag(x)}
                 </span></label>
               <button class="ghost tiny" data-task-edit="${x.id}" title="Edit">✎</button>
               <button class="ghost tiny" data-task-del="${x.id}" title="Delete">✕</button>
@@ -84,7 +93,7 @@ const Notes = {
             ${doneTasks.map(x => `
               <div class="task-row done">
                 <label class="prep-check"><input type="checkbox" checked data-task-toggle="${x.id}">
-                  <span>${escapeHtml(x.text)}</span></label>
+                  <span>${escapeHtml(x.text)} ${this.pathTag(x)}</span></label>
               </div>`).join('')}
             <button class="ghost tiny" id="tk-clear" style="margin-top:6px">Clear completed</button>` : ''}
         </div>

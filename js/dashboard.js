@@ -202,7 +202,7 @@ const Dashboard = {
               <button class="ghost tiny" data-open-app="${a.id}">Open</button>
             </li>`).join('')}
             ${due.tasks.map(x => `<li>
-              <span class="grow"><span class="who">${escapeHtml(x.text)}</span><br>
+              <span class="grow"><span class="who">${escapeHtml(x.text)}</span> ${Notes.pathTag(x)}<br>
                 <span class="${x.dueDate < t ? 'overdue' : 'due-today'}">task ${x.dueDate < t ? '· overdue since ' + fmtDate(x.dueDate) : '· due today'}</span></span>
               <button class="tiny" data-task-done="${x.id}">Done</button>
             </li>`).join('')}
